@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Enterprise OSGB & HBYS Ultimate Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f4f6f9; }
+        .sidebar { min-height: 100vh; background: #343a40; color: white; padding: 20px; }
+        .sidebar a { color: #cfd8dc; text-decoration: none; display: block; padding: 10px 0; border-bottom: 1px solid #4f5d65; }
+        .sidebar a:hover { color: white; background: #495057; padding-left: 5px; transition: 0.2s; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <!-- SOL MENÜ -->
+        <div class="col-md-3 sidebar">
+            <h3>🏥 HBYS v7.0 Pro</h3>
+            <div id="authStatus" class="alert alert-secondary py-1 my-2 text-center" style="font-size: 13px;">Giriş Yapılmadı</div>
+            <hr>
+            <a href="#login">🔑 1. Personel Girişi</a>
+            <a href="#patient">📝 2. Hasta Kayıt & Barkod</a>
+            <a href="#archive">📂 3. Hasta Arşivi</a>
+            <a href="#radiology">🩻 4. Röntgen & MR (PACS)</a>
+            <a href="#lab">🧪 5. Laboratuvar Sonuçları (LIS)</a>
+            <a href="#bed">🛏️ 6. Yatak / Servis Yönetimi</a>
+            <a href="#prescription">💊 7. E-Reçete & e-Nabız</a>
+            <a href="#barcode">🏷️ 8. Zebra Termal Yazıcı (ZPL)</a>
+            <a href="#audit">🛡️ 9. KVKK & Audit Log</a>
+            <a href="#export" class="text-warning">📥 10. E-Nabız FHIR XML İndir</a>
+        </div>
+
+        <!-- ANA İÇERİK ALANI -->
+        <div class="col-md-9 p-4">
+            <h2 class="mb-4">Enterprise Hastane & OSGB Yönetim Paneli</h2>
+
+            <!-- 1. GİRİŞ -->
+            <div id="login" class="card p-3">
+                <h5>1. Personel Girişi (Token Al)</h5>
+                <div class="row g-2">
+                    <div class="col-md-5"><input type="email" id="loginEmail" class="form-control" placeholder="E-posta (örn: doktor@hastane.com)"></div>
+                    <div class="col-md-4"><input type="password" id="loginPass" class="form-control" placeholder="Şifre"></div>
+                    <div class="col-md-3"><button class="btn btn-primary w-100" onclick="loginUser()">Giriş Yap</button></div>
+                </div>
+            </div>
+
+            <!-- 2. HASTA KAYIT -->
+            <div id="patient" class="card p-3">
+                <h5>2. Yeni Hasta / Çalışan Kaydı</h5>
+                <div class="row g-2">
+                    <div class="col-md-3"><input type="text" id="pTc" class="form-control" placeholder="TC Kimlik"></div>
+                    <div class="col-md-3"><input type="text" id="pName" class="form-control" placeholder="Ad Soyad"></div>
+                    <div class="col-md-3"><input type="text" id="pPhone" class="form-control" placeholder="Telefon"></div>
+                    <div class="col-md-3">
+    <select id="pDept" class="form-select">
+        <option value="Dahiliye">Dahiliye</option>
+        <option value="Kardiyoloji">Kardiyoloji</option>
+        <option value="Ortopedi">Ortopedi</option>
+        <option value="Acil Servis">Acil Servis</option>
+        <option value="Göz Hastalıkları">Göz Hastalıkları</option>
+        <option value="İş Yeri Hekimliği">İş Yeri Hekimliği</option>
+    </select>
+</div>
+                </div>
+                <button class="btn btn-success mt-2" onclick="savePatient()">Sisteme Kaydet & Barkod Üret</button>
+            </div>
+
+            <!-- 3. ARŞİV -->
+            <div id="archive" class="card p-3">
+                <h5>3. Hasta Arşivi (checkup.db)</h5>
+                <button class="btn btn-secondary btn-sm mb-2" onclick="loadPatients()">Veritabanındaki Hastaları Listele</button>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" id="patientTable">
+                        <thead><tr><th>TC Kimlik</th><th>Ad Soyad</th><th>Telefon</th><th>Departman</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. RÖNTGEN & MR -->
+            <div id="radiology" class="card p-3">
+                <h5>4. Röntgen & MR (PACS / EMR Entegrasyonu)</h5>
+                <div class="row g-2">
+                    <div class="col-md-3"><input type="text" id="radTc" class="form-control" placeholder="Hasta TC"></div>
+                    <div class="col-md-3">
+                        <select id="radModality" class="form-select">
+                            <option value="Röntgen">Röntgen</option>
+                            <option value="MR">MR (Emar)</option>
+                            <option value="BT">BT (Tomografi)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4"><input type="text" id="radBody" class="form-control" placeholder="Çekim Bölgesi (örn: Akciğer PA)"></div>
+                    <div class="col-md-2"><button class="btn btn-info w-100 text-white" onclick="createRadiology()">Çekim İste</button></div>
+                </div>
+            </div>
+
+            <!-- 5. LABORATUVAR (LİS) -->
+            <div id="lab" class="card p-3 border-info">
+                <h5 class="text-info">5. Laboratuvar Bilgi Sistemi (LIS) Sonuçları</h5>
+                <div class="row g-2">
+                    <div class="col-md-3"><input type="text" id="labTc" class="form-control" placeholder="Hasta TC"></div>
+                    <div class="col-md-3"><input type="text" id="labTest" class="form-control" placeholder="Test Adı (örn: Hemogram)"></div>
+                    <div class="col-md-2"><input type="text" id="labVal" class="form-control" placeholder="Sonuç / Değer"></div>
+                    <div class="col-md-2">
+                        <select id="labStatus" class="form-select">
+                            <option value="Normal">Normal</option>
+                            <option value="Kritik">Kritik! 🚨</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2"><button class="btn btn-info w-100 text-white" onclick="createLab()">Sonuç Gir</button></div>
+                </div>
+                <button class="btn btn-outline-info btn-sm mt-2" onclick="loadLab()">Lab Sonuçlarını Listele</button>
+                <div id="labList" class="mt-2" style="font-size: 13px;"></div>
+            </div>
+
+            <!-- 6. YATAK / SERVİS YÖNETİMİ -->
+            <div id="bed" class="card p-3 border-warning">
+                <h5 class="text-warning">6. Yatan Hasta & Servis Yatak Doluluk Yönetimi</h5>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <select id="wardName" class="form-select">
+                            <option value="Dahiliye Servisi">Dahiliye Servisi</option>
+                            <option value="Cerrahi Servisi">Cerrahi Servisi</option>
+                            <option value="Yoğun Bakım">Yoğun Bakım</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3"><input type="text" id="bedNo" class="form-control" placeholder="Yatak No (örn: 102-B)"></div>
+                    <div class="col-md-3"><input type="text" id="bedTc" class="form-control" placeholder="Hasta TC"></div>
+                    <div class="col-md-2"><button class="btn btn-warning w-100" onclick="assignBed()">Yatak Ata</button></div>
+                </div>
+                <button class="btn btn-outline-warning btn-sm mt-2" onclick="loadBeds()">Yatak Durumlarını Gör</button>
+                <div id="bedList" class="mt-2" style="font-size: 13px;"></div>
+            </div>
+
+            <!-- 7. E-REÇETE -->
+            <div id="prescription" class="card p-3">
+                <h5>7. E-Reçete & e-Nabız (HL7/FHIR Sim)</h5>
+                <div class="row g-2">
+                    <div class="col-md-3"><input type="number" id="presEmpId" class="form-control" placeholder="Personel ID"></div>
+                    <div class="col-md-4"><input type="text" id="presDrug" class="form-control" placeholder="İlaç Adı"></div>
+                    <div class="col-md-3"><input type="text" id="presInst" class="form-control" placeholder="Kullanım Talimatı"></div>
+                    <div class="col-md-2"><button class="btn btn-danger w-100" onclick="createPrescription()">Reçete Yaz</button></div>
+                </div>
+                <div id="presResult" class="mt-2 text-success font-monospace" style="font-size: 12px;"></div>
+            </div>
+
+            <!-- 8. ZEBRA BARKOD -->
+            <div id="barcode" class="card p-3">
+                <h5>8. Zebra Termal Yazıcı (ZPL Barkod)</h5>
+                <div class="input-group">
+                    <input type="text" id="zplTc" class="form-control" placeholder="Barkod Basılacak TC">
+                    <button class="btn btn-dark" onclick="getZpl()">ZPL Komutu Üret</button>
+                </div>
+                <pre id="zplOutput" class="bg-dark text-light p-2 mt-2" style="font-size: 11px; display:none;"></pre>
+            </div>
+
+            <!-- 9. KVKK & AUDİT LOG -->
+            <div id="audit" class="card p-3">
+                <h5>9. KVKK & Audit Log Denetimi (Admin Only)</h5>
+                <button class="btn btn-dark btn-sm mb-2" onclick="loadAuditLogs()">Logları Getir</button>
+                <div id="auditLogsArea" class="bg-light p-2 border" style="font-size: 12px; max-height: 150px; overflow-y:auto;"></div>
+            </div>
+
+            <!-- 10. E-NABIZ XML DIŞA AKTARIM -->
+            <div id="export" class="card p-3 border-success">
+                <h5 class="text-success">10. Sağlık Bakanlığı E-Nabız FHIR XML Veri Aktarımı</h5>
+                <p class="text-muted" style="font-size: 13px;">Tüm hastaların ve poliklinik kayıtlarının Bakanlık formatında XML olarak dışa aktarılması.</p>
+                <button class="btn btn-success" onclick="exportFhirXml()">Bakanlık FHIR XML Raporunu İndir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let authToken = "";
+
+    async function loginUser() {
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPass').value;
+        const formData = new URLSearchParams();
+        formData.append('username', email);
+        formData.append('password', pass);
+
+        try {
+            const res = await fetch('/token', { method: 'POST', body: formData });
+            const data = await res.json();
+            if(res.ok) {
+                authToken = data.access_token;
+                document.getElementById('authStatus').innerHTML = `<b>Giriş Yapıldı:</b> ${data.name} (${data.role.toUpperCase()})`;
+                document.getElementById('authStatus').className = "alert alert-success py-1 my-2 text-center";
+                alert("Giriş Başarılı!");
+            } else {
+                alert("Hata: " + data.detail);
+            }
+        } catch(e) { alert("Bağlantı hatası!"); }
+    }
+
+    async function savePatient() {
+        const payload = {
+            tc: document.getElementById('pTc').value,
+            name: document.getElementById('pName').value,
+            phone: document.getElementById('pPhone').value,
+            department: document.getElementById('pDept').value
+        };
+        const res = await fetch('/api/patients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message || data.detail);
+        loadPatients();
+    }
+
+    async function loadPatients() {
+        const res = await fetch('/api/patients', { headers: { 'Authorization': 'Bearer ' + authToken } });
+        const data = await res.json();
+        const tbody = document.querySelector('#patientTable tbody');
+        tbody.innerHTML = '';
+        if(data.patients) {
+            data.patients.forEach(p => {
+                tbody.innerHTML += `<tr><td>${p.tc}</td><td>${p.name}</td><td>${p.phone}</td><td>${p.department}</td></tr>`;
+            });
+        }
+    }
+
+    async function createRadiology() {
+        const payload = {
+            tc: document.getElementById('radTc').value,
+            modality: document.getElementById('radModality').value,
+            body_part: document.getElementById('radBody').value
+        };
+        const res = await fetch('/api/radiology', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message || data.detail);
+    }
+
+    async function createLab() {
+        const payload = {
+            tc: document.getElementById('labTc').value,
+            test_name: document.getElementById('labTest').value,
+            result_value: document.getElementById('labVal').value,
+            status: document.getElementById('labStatus').value
+        };
+        const res = await fetch('/api/lab', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message || data.detail);
+        loadLab();
+    }
+
+    async function loadLab() {
+        const res = await fetch('/api/lab', { headers: { 'Authorization': 'Bearer ' + authToken } });
+        const data = await res.json();
+        const div = document.getElementById('labList');
+        div.innerHTML = '';
+        if(data.records) {
+            data.records.forEach(r => {
+                div.innerHTML += `<div><b>TC:</b> ${r.tc} | <b>Test:</b> ${r.test_name} | <b>Değer:</b> ${r.result_value} | <b>Durum:</b> <span class="badge bg-${r.status=='Kritik'?'danger':'success'}">${r.status}</span></div>`;
+            });
+        }
+    }
+
+    async function assignBed() {
+        const payload = {
+            ward_name: document.getElementById('wardName').value,
+            bed_number: document.getElementById('bedNo').value,
+            patient_tc: document.getElementById('bedTc').value
+        };
+        const res = await fetch('/api/beds/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        alert(data.message || data.detail);
+        loadBeds();
+    }
+
+    async function loadBeds() {
+        const res = await fetch('/api/beds', { headers: { 'Authorization': 'Bearer ' + authToken } });
+        const data = await res.json();
+        const div = document.getElementById('bedList');
+        div.innerHTML = '';
+        if(data.beds) {
+            data.beds.forEach(b => {
+                div.innerHTML += `<div><b>Servis:</b> ${b.ward_name} | <b>Yatak:</b> ${b.bed_number} | <b>Durum:</b> ${b.status} | <b>Hasta TC:</b> ${b.patient_tc || 'Yok'}</div>`;
+            });
+        }
+    }
+
+    async function createPrescription() {
+        const payload = {
+            employee_id: parseInt(document.getElementById('presEmpId').value),
+            drug_name: document.getElementById('presDrug').value,
+            instructions: document.getElementById('presInst').value
+        };
+        const res = await fetch('/api/prescription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        document.getElementById('presResult').innerText = JSON.stringify(data, null, 2);
+    }
+
+    async function getZpl() {
+        const tc = document.getElementById('zplTc').value;
+        const res = await fetch(`/api/print-zebra-zpl/${tc}`);
+        const data = await res.json();
+        const pre = document.getElementById('zplOutput');
+        pre.style.display = 'block';
+        pre.innerText = JSON.stringify(data, null, 2);
+    }
+
+    async function loadAuditLogs() {
+        const res = await fetch('/api/audit-logs', { headers: { 'Authorization': 'Bearer ' + authToken } });
+        const data = await res.json();
+        const area = document.getElementById('auditLogsArea');
+        area.innerHTML = '';
+        if(data.logs) {
+            data.logs.forEach(l => {
+                area.innerHTML += `<div>[${l.timestamp}] <b>${l.user}</b> (${l.category}): ${l.detail}</div>`;
+            });
+        } else {
+            area.innerHTML = `<span class="text-danger">${data.detail || 'Yetkisiz erişim!'}</span>`;
+        }
+    }
+
+    async function exportFhirXml() {
+        const res = await fetch('/api/export/enabiz-fhir', { headers: { 'Authorization': 'Bearer ' + authToken } });
+        if(res.ok) {
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "enabiz_fhir_export.xml";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } else {
+            const data = await res.json();
+            alert(data.detail || "İndirme başarısız.");
+        }
+    }
+</script>
+</body>
+</html>
